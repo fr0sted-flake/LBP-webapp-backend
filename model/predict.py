@@ -26,16 +26,16 @@ def predict_all(throttle: float, gear: float):
 
     return {
         "engine_parameters": {
-            "ENGINE_RPM": float(engine_params[0][0]),
-            "IntakeGasMassFlow": float(engine_params[0][1]),
-            "FuelMassFlow": float(engine_params[0][2]),
-            "AirFuelRatio": float(engine_params[0][3]),
+            "ENGINE_RPM": round(float(engine_params[0][0]), 2),
+            "IntakeGasMassFlow": round(float(engine_params[0][1]), 6),
+            "FuelMassFlow": round(float(engine_params[0][2]), 6),
+            "AirFuelRatio": round(float(engine_params[0][3]), 2),
         },
         "final_outputs": {
-            "EngineTorque": float(final_outputs[0][0]),
-            "BSFC": float(final_outputs[0][1]),
-            "PowerTransferred": float(final_outputs[0][2]),
-            "PowerFromFuel": float(final_outputs[0][3]),
-            "Efficiency": float(efficiency)
+            "EngineTorque": round(float(final_outputs[0][0]), 2),
+            "BSFC": round(float(final_outputs[0][1]), 2),
+            "PowerTransferred": round(float(final_outputs[0][2]), 2),
+            "PowerFromFuel": round(float(final_outputs[0][3]), 2),
+            "Efficiency": round(float(efficiency), 2)
         }
     }
