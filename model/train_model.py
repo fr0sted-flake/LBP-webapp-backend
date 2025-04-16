@@ -26,17 +26,17 @@ def train_models():
     y1_scaler = MinMaxScaler()
     y1_scaled = y1_scaler.fit_transform(y1)
 
-    # Actually keep the test sets for validation
+    # Test phase - train with split data to evaluate performance
     X1_train, X1_test, y1_train, y1_test = train_test_split(X1_scaled, y1_scaled, test_size=0.2, random_state=42)
 
     # Using Random Forest Regressor
     model1 = RandomForestRegressor(
-        n_estimators=1000,  # Number of trees
-        max_depth=15,  # Increased depth for better learning
-        min_samples_split=3,  # Minimum samples to split a node
-        min_samples_leaf=2,  # Minimum samples per leaf
-        random_state=42,  # Ensures reproducibility
-        n_jobs=-1  # Utilize all CPU cores
+        n_estimators=1000,
+        max_depth=15,
+        min_samples_split=3,
+        min_samples_leaf=2,
+        random_state=42,
+        n_jobs=-1
     )
     model1.fit(X1_train, y1_train)
     
@@ -46,7 +46,7 @@ def train_models():
     print(f"MSE: {mean_squared_error(y1_test, y1_pred)}")
     print(f"R²: {r2_score(y1_test, y1_pred)}")
 
-    # Step 2: Use predictions from Step 1 to train XGBoost
+    # Step 2: Test XGBoost's performance
     # Get predictions for the entire dataset (inverse transform to get real values)
     df_pred1 = model1.predict(X1_scaled)
     df_pred1 = y1_scaler.inverse_transform(df_pred1)
@@ -60,7 +60,7 @@ def train_models():
     y2_scaler = MinMaxScaler()
     y2_scaled = y2_scaler.fit_transform(y2)
 
-    # Actually keep the test sets for validation
+    # Test phase for model2
     X2_train, X2_test, y2_train, y2_test = train_test_split(X2_scaled, y2_scaled, test_size=0.2, random_state=42)
 
     model2 = xgb.XGBRegressor(
@@ -80,9 +80,44 @@ def train_models():
     print(f"MSE: {mean_squared_error(y2_test, y2_pred)}")
     print(f"R²: {r2_score(y2_test, y2_pred)}")
 
+    print("\n--- Now training final models on FULL dataset for maximum accuracy ---")
+    
+    # RETRAIN MODEL 1 on full dataset
+    print("Retraining Model 1 on full dataset...")
+    model1 = RandomForestRegressor(
+        n_estimators=1000,
+        max_depth=15,
+        min_samples_split=3,
+        min_samples_leaf=2,
+        random_state=42,
+        n_jobs=-1
+    )
+    model1.fit(X1_scaled, y1_scaled)  # Train on ALL data
+    
+    # Generate predictions with the full-data model
+    df_pred1 = model1.predict(X1_scaled)
+    df_pred1 = y1_scaler.inverse_transform(df_pred1)
+    
+    # Create features for model2 using predictions from the full-data model1
+    X2 = pd.DataFrame(df_pred1, columns=['ENGINE_RPM', 'IntkGasMassFlw', 'FuelMassFlw', 'Afr'])
+    X2_scaled = X2_scaler.transform(X2)  # Use the same scaler as before
+    
+    # RETRAIN MODEL 2 on full dataset
+    print("Retraining Model 2 on full dataset...")
+    model2 = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=5,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42
+    )
+    model2.fit(X2_scaled, y2_scaled)  # Train on ALL data
+
     os.makedirs(SAVE_PATH, exist_ok=True)
 
-    # Save everything
+    # Save the models trained on full data
     joblib.dump(model1, SAVE_PATH + "model1.pkl")
     joblib.dump(model2, SAVE_PATH + "model2.pkl")
     joblib.dump(X1_scaler, SAVE_PATH + "scaler_X1.pkl")
@@ -90,7 +125,7 @@ def train_models():
     joblib.dump(X2_scaler, SAVE_PATH + "scaler_X2.pkl")
     joblib.dump(y2_scaler, SAVE_PATH + "scaler_y2.pkl")
     
-    print("\nModels trained and saved successfully!")
+    print("\nModels trained on FULL dataset and saved successfully!")
 
 if __name__ == "__main__":
     train_models()
