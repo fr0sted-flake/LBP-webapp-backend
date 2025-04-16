@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import os
+import numpy as np
 
 DATA_PATH = "data/output_engine_data_2.csv"
 SAVE_PATH = "models/"
