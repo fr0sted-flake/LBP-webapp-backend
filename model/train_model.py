@@ -3,6 +3,7 @@ import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 import os
 import numpy as np
@@ -25,7 +26,8 @@ def train_models():
     y1_scaler = MinMaxScaler()
     y1_scaled = y1_scaler.fit_transform(y1)
 
-    X1_train, _, y1_train, _ = train_test_split(X1_scaled, y1_scaled, test_size=0.2, random_state=42)
+    # Actually keep the test sets for validation
+    X1_train, X1_test, y1_train, y1_test = train_test_split(X1_scaled, y1_scaled, test_size=0.2, random_state=42)
 
     # Using Random Forest Regressor
     model1 = RandomForestRegressor(
@@ -37,9 +39,18 @@ def train_models():
         n_jobs=-1  # Utilize all CPU cores
     )
     model1.fit(X1_train, y1_train)
+    
+    # Evaluate model1
+    y1_pred = model1.predict(X1_test)
+    print("Model 1 (Random Forest) Performance:")
+    print(f"MSE: {mean_squared_error(y1_test, y1_pred)}")
+    print(f"R²: {r2_score(y1_test, y1_pred)}")
 
     # Step 2: Use predictions from Step 1 to train XGBoost
+    # Get predictions for the entire dataset (inverse transform to get real values)
     df_pred1 = model1.predict(X1_scaled)
+    df_pred1 = y1_scaler.inverse_transform(df_pred1)
+    
     X2 = pd.DataFrame(df_pred1, columns=['ENGINE_RPM', 'IntkGasMassFlw', 'FuelMassFlw', 'Afr'])
     y2 = df[['EngTrq', 'Bsfc', 'PwrTrnsfrd', 'PwrFuel']]
 
@@ -49,7 +60,8 @@ def train_models():
     y2_scaler = MinMaxScaler()
     y2_scaled = y2_scaler.fit_transform(y2)
 
-    X2_train, _, y2_train, _ = train_test_split(X2_scaled, y2_scaled, test_size=0.2, random_state=42)
+    # Actually keep the test sets for validation
+    X2_train, X2_test, y2_train, y2_test = train_test_split(X2_scaled, y2_scaled, test_size=0.2, random_state=42)
 
     model2 = xgb.XGBRegressor(
         objective='reg:squarederror',
@@ -61,6 +73,12 @@ def train_models():
         random_state=42
     )
     model2.fit(X2_train, y2_train)
+    
+    # Evaluate XGBoost model
+    y2_pred = model2.predict(X2_test)
+    print("\nModel 2 (XGBoost) Performance:")
+    print(f"MSE: {mean_squared_error(y2_test, y2_pred)}")
+    print(f"R²: {r2_score(y2_test, y2_pred)}")
 
     os.makedirs(SAVE_PATH, exist_ok=True)
 
@@ -71,6 +89,8 @@ def train_models():
     joblib.dump(y1_scaler, SAVE_PATH + "scaler_y1.pkl")
     joblib.dump(X2_scaler, SAVE_PATH + "scaler_X2.pkl")
     joblib.dump(y2_scaler, SAVE_PATH + "scaler_y2.pkl")
+    
+    print("\nModels trained and saved successfully!")
 
 if __name__ == "__main__":
     train_models()
